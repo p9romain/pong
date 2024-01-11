@@ -9,6 +9,7 @@ use sdl2::{
 use std::{
   time::Duration,
   path::Path,
+  f64::consts::PI,
 } ;
 
 fn draw_rec(canvas : &mut Canvas<Window>, c : Color, x : u32, y : u32, width : u32, height : u32)
@@ -49,7 +50,7 @@ fn main()
 
   let ball_size = 20u32 ;
   let (mut ball_x, mut ball_y) = (w_width/2, w_height/2) ;
-  let ball_speed = 8u32 ;
+  let ball_speed = 2u32 ;
   let mut angle = 0f64 ;
 
   let (paddle_size_w, paddle_size_h) = (15u32, 100u32) ;
@@ -60,8 +61,8 @@ fn main()
   let paddle_y_limit_min = paddle_size_h/2 ;
   let paddle_y_limit_max = w_height - paddle_size_h/2 ;
 
-  let mut score_p1 = 0 ;
-  let mut score_p2 = 0 ;
+  let mut score_p1 = 0u32 ;
+  let mut score_p2 = 0u32 ;
 
   let mut game = false ;
   let mut first_time = true ;
@@ -72,120 +73,106 @@ fn main()
     canvas.set_draw_color(Color::RGB(50, 50, 50)) ;
     canvas.clear() ;
 
-    if game
+    // key listener
+    for evt in event_pump.poll_iter()
     {
-      // key listener
-      for evt in event_pump.poll_iter()
+      match evt 
       {
-        match evt 
+        Event::Quit {..} | 
+        Event::KeyDown { keycode : Some(Keycode::Escape), .. } =>
         {
-          Event::Quit {..} | 
-          Event::KeyDown { keycode : Some(Keycode::Escape), .. } =>
-          {
-            break 'run 
-          },
-          Event::KeyDown { keycode : Some(Keycode::Z), .. } =>
-          {
-            hold_up_p1 = true ;
-          },
-          Event::KeyDown { keycode : Some(Keycode::S), .. } =>
-          {
-            hold_down_p1 = true ;
-          },
-          Event::KeyDown { keycode : Some(Keycode::Up), .. } =>
-          {
-            hold_up_p2 = true ;
-          },
-          Event::KeyDown { keycode : Some(Keycode::Down), .. } =>
-          {
-            hold_down_p2 = true ;
-          },
-          Event::KeyUp { keycode : Some(Keycode::Z), .. } =>
-          {
-            hold_up_p1 = false ;
-          },
-          Event::KeyUp { keycode : Some(Keycode::S), .. } =>
-          {
-            hold_down_p1 = false ;
-          },
-          Event::KeyUp { keycode : Some(Keycode::Up), .. } =>
-          {
-            hold_up_p2 = false ;
-          },
-          Event::KeyUp { keycode : Some(Keycode::Down), .. } =>
-          {
-            hold_down_p2 = false ;
-          },
-          _ => {}
-        }
+          break 'run 
+        },
+        Event::KeyDown { keycode : Some(Keycode::Z), .. } =>
+        {
+          hold_up_p1 = true ;
+        },
+        Event::KeyDown { keycode : Some(Keycode::S), .. } =>
+        {
+          hold_down_p1 = true ;
+        },
+        Event::KeyDown { keycode : Some(Keycode::Up), .. } =>
+        {
+          hold_up_p2 = true ;
+        },
+        Event::KeyDown { keycode : Some(Keycode::Down), .. } =>
+        {
+          hold_down_p2 = true ;
+        },
+        Event::KeyUp { keycode : Some(Keycode::Z), .. } =>
+        {
+          hold_up_p1 = false ;
+        },
+        Event::KeyUp { keycode : Some(Keycode::S), .. } =>
+        {
+          hold_down_p1 = false ;
+        },
+        Event::KeyUp { keycode : Some(Keycode::Up), .. } =>
+        {
+          hold_up_p2 = false ;
+        },
+        Event::KeyUp { keycode : Some(Keycode::Down), .. } =>
+        {
+          hold_down_p2 = false ;
+        },
+        _ => {}
+      }
+    }
+
+    if game && !first_time
+    {
+      // paddle mvt
+      if hold_up_p1 && paddle_p1_y > paddle_y_limit_min
+      {
+        paddle_p1_y -= paddle_speed ;
+      }
+      else if hold_down_p1 && paddle_p1_y < paddle_y_limit_max
+      {
+        paddle_p1_y += paddle_speed ;
       }
 
-      if !first_time
+      if hold_up_p2 && paddle_p2_y > paddle_y_limit_min
       {
-        // paddle mvt
-        if hold_up_p1 && paddle_p1_y > paddle_y_limit_min
-        {
-          paddle_p1_y -= paddle_speed
-        }
-        else if hold_down_p1 && paddle_p1_y < paddle_y_limit_max
-        {
-          paddle_p1_y += paddle_speed
-        }
-  
-        if hold_up_p2 && paddle_p2_y > paddle_y_limit_min
-        {
-          paddle_p2_y -= paddle_speed
-        }
-        else if hold_down_p2 && paddle_p2_y < paddle_y_limit_max
-        {
-          paddle_p2_y += paddle_speed
-        }
-
-        if ball_x == 0
-        {
-          score_p2 += 1 ;
-          game = false ;
-        }
-        else if ball_x == w_width
-        {
-          score_p1 += 1 ;
-          game = false ;
-        }
-  
-        // ball mvt
-        if ( ball_x - ball_size/2 == paddle_p1_x + paddle_size_w )
-        {
-          // ball hit paddle_p1
-          let pos_ball_comparing_to_paddle : f64 = 2 * (ball_y - paddle_p1_y) as f64 / paddle_size_h as f64
-          angle : f64 = (std::f64::consts::PI * 70.0 / 180.0 ) * pos_ball_comparing_to_paddle ;
-        }
-        else if ( ball_x + ball_size/2 == paddle_p2_x - paddle_size_w )
-        {
-          // ball hit paddle_p2
-          let pos_ball_comparing_to_paddle : f64 = 2 * (ball_y - paddle_p2_y) as f64 / paddle_size_h as f64 ;
-          angle : f64 = (std::f64::consts::PI * 70.0 / 180.0 ) * pos_ball_comparing_to_paddle ;
-        }
-        else if ( ball_y - ball_size/2 == 0 )
-        {
-
-        }
-        else if ( ball_y + ball_size/2 == w_height )
-        {
-
-        }
-          
-        ball_x += ball_speed * angle.cos() ;
-        ball_y += ball_speed * angle.sin() ;
+        paddle_p2_y -= paddle_speed ;
       }
+      else if hold_down_p2 && paddle_p2_y < paddle_y_limit_max
+      {
+        paddle_p2_y += paddle_speed ;
+      }
+
+      if ball_x - ball_size/2 == 0
+      {
+        score_p2 += 1 ;
+        game = false ;
+
+        ball_x = w_width/2 ; 
+        ball_y = w_height/2 ;
+        angle = -PI ;
+
+        paddle_p1_y = w_height/2 ;
+        paddle_p2_y = w_height/2 ;
+      }
+      else if ball_x + ball_size/2 == w_width
+      {
+        score_p1 += 1 ;
+        game = false ;
+
+        ball_x = w_width/2 ; 
+        ball_y = w_height/2 ;
+        angle = 0.0 ;
+
+        paddle_p1_y = w_height/2 ;
+        paddle_p2_y = w_height/2 ;
+      }
+
+      // ball mvt
+      ball_x += (ball_speed as f64 * angle.cos()) as u32 ;
+      ball_y += (ball_speed as f64 * angle.sin()) as u32 ;
     }
     else if !game
     {
-      ball_x = w_width/2 ; 
-      ball_y = w_height/2 ;
-
-      paddle_p1_y = w_height/2 ;
-      paddle_p2_y = w_height/2 ;
-
+      // Only to render but not starting the game bc we wait before lauching so we need
+      // to render once
       if first_time 
       {
         first_time = false ;
@@ -213,7 +200,7 @@ fn main()
       .create_texture_from_surface(&surface)
       .unwrap() ;
 
-    canvas.copy(&texture, None, Some(Rect::new((w_width/2 - surface.size().0/5) as i32, (w_height/20) as i32, 2*surface.size().0/5, 2*surface.size().1/5))) ;
+    canvas.copy(&texture, None, Some(Rect::new((w_width/2 - surface.size().0/5) as i32, (w_height/20) as i32, 2*surface.size().0/5, 2*surface.size().1/5))).expect("idk") ;
 
     canvas.present();
     ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60)) ;
