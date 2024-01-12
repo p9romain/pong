@@ -12,20 +12,20 @@ use std::{
   f64::consts::PI,
 } ;
 
-fn draw_rec(canvas : &mut Canvas<Window>, c : Color, x : u32, y : u32, width : u32, height : u32)
+fn draw_rec(canvas : &mut Canvas<Window>, c : Color, x : i32, y : i32, width : i32, height : i32)
 {
   canvas.set_draw_color(c) ;
-  let _ = canvas.fill_rect(Rect::new(x as i32, y as i32, width, height)) ;
+  canvas.fill_rect(Rect::new(x, y, width as u32, height as u32)).expect("couldn't fill rect") ;
 }
 
 fn main() 
 {
-  let (w_width, w_height) = (1080u32, 720u32) ;
+  let (w_width, w_height) = (1080i32, 720i32) ;
 
   let sdl_context = sdl2::init().expect("couldn't initialize SDL2") ;
   let video_subsystem = sdl_context.video().expect("couldn't initialize video subsystem") ;
 
-  let window = video_subsystem.window("pong", w_width, w_height)
+  let window = video_subsystem.window("pong", w_width as u32, w_height as u32)
     .position_centered()
     .build()
     .expect("couldn't create a window") ;
@@ -48,21 +48,21 @@ fn main()
 
   let paddle_pos_compared_to_w_side = w_width/10 ;
 
-  let ball_size = 20u32 ;
+  let ball_size : i32 = 20 ;
   let (mut ball_x, mut ball_y) = (w_width/2, w_height/2) ;
-  let ball_speed = 2u32 ;
-  let mut angle = 0f64 ;
+  let ball_speed : i32 = 12 ;
+  let mut angle : f64 = 0.0 ;
 
-  let (paddle_size_w, paddle_size_h) = (15u32, 100u32) ;
+  let (paddle_size_w, paddle_size_h) = (15, 100) ;
   let (paddle_p1_x, mut paddle_p1_y) = (paddle_pos_compared_to_w_side, w_height/2) ;
   let (paddle_p2_x, mut paddle_p2_y) = (w_width - paddle_pos_compared_to_w_side, w_height/2) ;
-  let paddle_speed = 5u32 ;
+  let paddle_speed = 8 ;
 
   let paddle_y_limit_min = paddle_size_h/2 ;
   let paddle_y_limit_max = w_height - paddle_size_h/2 ;
 
-  let mut score_p1 = 0u32 ;
-  let mut score_p2 = 0u32 ;
+  let mut score_p1 : u32 = 0 ;
+  let mut score_p2 : u32 = 0 ;
 
   let mut game = false ;
   let mut first_time = true ;
@@ -140,7 +140,46 @@ fn main()
         paddle_p2_y += paddle_speed ;
       }
 
-      if ball_x - ball_size/2 == 0
+      // ball mvt
+
+      // since we move at most ball_speed pixel, we check colisions at + or - ball_speed/2
+      if (ball_x - ball_size/2 - (paddle_p1_x + paddle_size_w/2)).abs() <= ball_speed/2
+      && ball_y + ball_size/2 >= paddle_p1_y - paddle_size_h/2
+      && ball_y - ball_size/2 <= paddle_p1_y + paddle_size_h/2
+      {
+        if ball_y <= paddle_p1_y
+        {
+          angle = -(((paddle_p1_y - ball_y)/(ball_x - paddle_p1_x)) as f64).atan() ;
+        }
+        else
+        {
+          angle = (((ball_y - paddle_p1_y)/(ball_x - paddle_p1_x)) as f64).atan() ;
+        }
+      }
+      else if (ball_x + ball_size/2 - (paddle_p2_x - paddle_size_w/2)).abs() <= ball_speed/2
+      && ball_y + ball_size/2 >= paddle_p2_y - paddle_size_h/2
+      && ball_y - ball_size/2 <= paddle_p2_y + paddle_size_h/2
+      {
+        if ball_y <= paddle_p2_y
+        {
+          angle = -PI + (((paddle_p2_y - ball_y)/(paddle_p2_x - ball_x)) as f64).atan() ;
+        }
+        else
+        {
+          angle = PI - (((ball_y - paddle_p2_y)/(paddle_p2_x - ball_x)) as f64).atan() ;
+        }
+      }
+      else if (ball_y - ball_size/2).abs() <= ball_speed/2
+           || (ball_y + ball_size/2 - w_height).abs() <= ball_speed/2
+      {
+        angle = -angle ;
+      }
+
+      ball_x += (ball_speed as f64 * angle.cos()) as i32 ;
+      ball_y += (ball_speed as f64 * angle.sin()) as i32 ;
+
+      // score test
+      if ball_x - ball_size/2 <= ball_speed/2
       {
         score_p2 += 1 ;
         game = false ;
@@ -152,7 +191,7 @@ fn main()
         paddle_p1_y = w_height/2 ;
         paddle_p2_y = w_height/2 ;
       }
-      else if ball_x + ball_size/2 == w_width
+      else if ball_x + ball_size/2 >= w_width - ball_speed/2
       {
         score_p1 += 1 ;
         game = false ;
@@ -164,10 +203,6 @@ fn main()
         paddle_p1_y = w_height/2 ;
         paddle_p2_y = w_height/2 ;
       }
-
-      // ball mvt
-      ball_x += (ball_speed as f64 * angle.cos()) as u32 ;
-      ball_y += (ball_speed as f64 * angle.sin()) as u32 ;
     }
     else if !game
     {
@@ -190,7 +225,7 @@ fn main()
     draw_rec(&mut canvas, Color::RGB(200, 200, 200), paddle_p1_x - paddle_size_w/2, paddle_p1_y - paddle_size_h/2, paddle_size_w, paddle_size_h) ;
     draw_rec(&mut canvas, Color::RGB(200, 200, 200), paddle_p2_x - paddle_size_w/2, paddle_p2_y - paddle_size_h/2, paddle_size_w, paddle_size_h) ;
 
-    let score_text = format!("{}   -   {}", score_p1, score_p2) ;
+    let score_text = format!("{}     -     {}", score_p1, score_p2) ;
     let surface = font
       .render(&score_text)
       .blended(Color::RGB(200, 200, 200))
@@ -200,9 +235,9 @@ fn main()
       .create_texture_from_surface(&surface)
       .unwrap() ;
 
-    canvas.copy(&texture, None, Some(Rect::new((w_width/2 - surface.size().0/5) as i32, (w_height/20) as i32, 2*surface.size().0/5, 2*surface.size().1/5))).expect("idk") ;
+    canvas.copy(&texture, None, Some(Rect::new(w_width/2 - surface.size().0 as i32/5, w_height/20, 2*surface.size().0/5, 2*surface.size().1/5))).expect("can't render score") ;
 
     canvas.present();
-    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60)) ;
+    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32/60)) ;
   } 
 }
