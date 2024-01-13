@@ -169,7 +169,8 @@ fn main()
           angle = PI - (((ball_y - paddle_p2_y)/(paddle_p2_x - ball_x)) as f64).atan() ;
         }
       }
-      else if (ball_y - ball_size/2).abs() <= ball_speed/2
+      
+      if (ball_y - ball_size/2).abs() <= ball_speed/2
            || (ball_y + ball_size/2 - w_height).abs() <= ball_speed/2
       {
         angle = -angle ;
